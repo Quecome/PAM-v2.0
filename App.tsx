@@ -1,14 +1,15 @@
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import ProducerDetail from './pages/ProducerDetail';
-import Producers from './pages/Producers';
-import Certifications from './pages/Certifications';
-import About from './pages/About';
-import Support from './pages/Support';
+import Landing from './features/landing/Landing';
+import Login from './features/auth/Login';
+import Register from './features/auth/Register';
+import Dashboard from './features/dashboard/Dashboard';
+import Orders from './features/dashboard/Orders';
+import ProducerDetail from './features/directory/ProducerDetail';
+import Producers from './features/directory/Producers';
+import Certifications from './features/certifications/Certifications';
+import About from './features/about/About';
+import Support from './features/support/Support';
 import Chatbot from './components/Chatbot';
 
 const ScrollToTop = () => {
@@ -27,6 +28,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/producers" element={<Producers />} />

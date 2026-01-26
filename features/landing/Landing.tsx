@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import Navbar from '../components/Navbar';
+import React, { useState, useMemo, useRef } from 'react';
+import Navbar from '../../components/Navbar';
 import { Link } from 'react-router-dom';
 
 // Datos simulados para Landing (puede ser un subconjunto o los mismos)
@@ -78,18 +78,25 @@ const producersData = [
   }
 ];
 
+// Función de utilidad para normalizar texto (quitar acentos y minúsculas)
+const normalizeText = (text: string) => {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
 const Landing: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('Todos');
+  const resultsRef = useRef<HTMLElement>(null);
 
   const filteredProducers = useMemo(() => {
     return producersData.filter(producer => {
-      // 1. Search Term
+      // 1. Search Term (Normalized for better UX)
+      const normalizedSearch = normalizeText(searchTerm);
       const matchesSearch = 
         searchTerm === '' || 
-        producer.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        producer.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        producer.location.toLowerCase().includes(searchTerm.toLowerCase());
+        normalizeText(producer.name).includes(normalizedSearch) || 
+        normalizeText(producer.product).includes(normalizedSearch) ||
+        normalizeText(producer.location).includes(normalizedSearch);
 
       // 2. Chip Filter
       let matchesFilter = true;
@@ -107,6 +114,13 @@ const Landing: React.FC = () => {
     });
   }, [searchTerm, activeFilter]);
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resultsRef.current) {
+        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -123,7 +137,7 @@ const Landing: React.FC = () => {
                 Directorio seguro de Michoacán. Sin intermediarios, trato directo entre partes.
               </p>
               <div className="w-full max-w-2xl transform transition-all hover:scale-[1.01]">
-                <form className="relative flex h-14 items-center overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5" onSubmit={(e) => e.preventDefault()}>
+                <form className="relative flex h-14 items-center overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5" onSubmit={handleSearchSubmit}>
                   <div className="flex h-full w-12 items-center justify-center text-gray-400">
                     <span className="material-symbols-outlined">search</span>
                   </div>
@@ -139,7 +153,7 @@ const Landing: React.FC = () => {
                         <span className="material-symbols-outlined">close</span>
                      </button>
                   )}
-                  <button className="m-1.5 h-11 rounded-lg bg-primary px-6 text-sm font-bold text-white hover:bg-primary-dark transition-colors">
+                  <button type="submit" className="m-1.5 h-11 rounded-lg bg-primary px-6 text-sm font-bold text-white hover:bg-primary-dark transition-colors">
                     Buscar
                   </button>
                 </form>
@@ -156,7 +170,12 @@ const Landing: React.FC = () => {
             {['Todos', 'Frutas', 'Verduras', 'Orgánico', 'Certificado SENASICA'].map((filter) => (
                 <button 
                     key={filter}
-                    onClick={() => setActiveFilter(filter)}
+                    onClick={() => {
+                        setActiveFilter(filter);
+                        if (resultsRef.current) {
+                            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }}
                     className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors ${
                         activeFilter === filter 
                         ? 'bg-[#161613] text-white shadow-sm' 
@@ -175,14 +194,14 @@ const Landing: React.FC = () => {
       </section>
 
       {/* Producer Grid */}
-      <main className="flex-1 w-full bg-background-light">
+      <main ref={resultsRef} className="flex-1 w-full bg-background-light scroll-mt-20">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-[#161613] sm:text-3xl">Productores Destacados</h2>
               <p className="mt-2 text-sm text-gray-500">
                 {filteredProducers.length > 0 
-                  ? 'Explora los productores con mayor reputación y calidad.' 
+                  ? `Mostrando ${filteredProducers.length} resultados para tu búsqueda.` 
                   : 'No se encontraron resultados para tu búsqueda.'}
               </p>
             </div>

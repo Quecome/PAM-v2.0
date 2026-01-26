@@ -120,7 +120,7 @@ const About: React.FC = () => {
         <div className="container mx-auto px-6 text-center">
             <h2 className="font-display font-bold text-3xl md:text-4xl mb-8">¿Listo para ser parte del cambio?</h2>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Link to="/login" className="bg-white text-pam-green-dark px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg flex items-center justify-center gap-2">
+                <Link to="/register" className="bg-white text-pam-green-dark px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-lg flex items-center justify-center gap-2">
                     <span>Unirme como Productor</span>
                     <span className="material-symbols-outlined">arrow_forward</span>
                 </Link>
