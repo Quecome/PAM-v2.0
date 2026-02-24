@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import Sidebar from './Sidebar';
+import React, { useState, useEffect } from 'react';
+import Sidebar from '../../components/Sidebar';
 
 // Definición de tipo para los cultivos
 interface Crop {
@@ -51,10 +51,25 @@ const initialCrops: Crop[] = [
   }
 ];
 
+const CROPS_STORAGE_KEY = 'pam_crops';
+
 const Dashboard: React.FC = () => {
-  const [crops, setCrops] = useState<Crop[]>(initialCrops);
+  // ✅ PERSISTENCIA: carga desde localStorage o usa datos iniciales
+  const [crops, setCrops] = useState<Crop[]>(() => {
+    try {
+      const stored = localStorage.getItem(CROPS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : initialCrops;
+    } catch {
+      return initialCrops;
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // ✅ PERSISTENCIA: guarda en localStorage en cada cambio
+  useEffect(() => {
+    localStorage.setItem(CROPS_STORAGE_KEY, JSON.stringify(crops));
+  }, [crops]);
+
   // Estados para Modales
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -63,8 +78,8 @@ const Dashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   // Filtrado
-  const filteredCrops = crops.filter(crop => 
-    crop.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredCrops = crops.filter(crop =>
+    crop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     crop.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -103,13 +118,13 @@ const Dashboard: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isEditing && currentCrop.id) {
       // Update existing
       setCrops(prev => prev.map(c => (c.id === currentCrop.id ? currentCrop as Crop : c)));
     } else {
       // Add new
-      const newId = Math.max(...crops.map(c => c.id), 0) + 1;
+      const newId = crops.reduce((max, c) => Math.max(max, c.id), 0) + 1;
       const newCrop = { ...currentCrop, id: newId, date: 'Hoy' } as Crop;
       setCrops(prev => [newCrop, ...prev]);
     }
@@ -126,12 +141,12 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F5F5F5]">
+    <div className="flex h-screen overflow-hidden bg-[#F5F5F5] pt-16 md:pt-0">
       <Sidebar />
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="h-24 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
-          <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight">Mis Cultivos</h1>
-          <div className="flex items-center gap-4">
+        <header className="h-20 sm:h-24 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shadow-sm z-10">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-gray-800 tracking-tight">Mis Cultivos</h1>
+          <div className="hidden md:flex items-center gap-4">
             <button className="w-12 h-12 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 relative">
               <span className="material-symbols-outlined text-3xl">notifications</span>
               <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
@@ -141,7 +156,7 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
         </header>
-        
+
         <div className="flex-1 overflow-y-auto p-6 lg:p-10">
           {/* Action Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
@@ -149,15 +164,15 @@ const Dashboard: React.FC = () => {
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="material-symbols-outlined text-gray-400 text-2xl">search</span>
               </span>
-              <input 
+              <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-12 pr-4 py-4 rounded-xl border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-lg" 
-                placeholder="Buscar cultivo o variedad..." 
+                className="block w-full pl-12 pr-4 py-4 rounded-xl border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-lg"
+                placeholder="Buscar cultivo o variedad..."
                 type="text"
               />
             </div>
-            <button 
+            <button
               onClick={handleAddNew}
               className="bg-pam-green hover:bg-pam-green-dark text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-xl hover:translate-y-[-2px] active:translate-y-0 transition-all flex items-center gap-3 font-bold text-xl"
             >
@@ -168,7 +183,7 @@ const Dashboard: React.FC = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-10">
-            
+
             {filteredCrops.map((crop) => (
               <article key={crop.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col group">
                 <div className="h-48 bg-gray-100 relative overflow-hidden">
@@ -206,40 +221,40 @@ const Dashboard: React.FC = () => {
                       <p className="text-sm text-gray-500 font-medium">Estimado</p>
                       <p className="text-lg font-bold text-gray-900">{crop.tonnage} Ton</p>
                     </div>
-                    
+
                     {/* Conditional Rendering for specific status details */}
                     {crop.progress !== undefined && (
-                         <div className="col-span-2">
-                            <p className="text-sm text-gray-500 font-medium mb-1">Progreso Riego</p>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${crop.progress}%` }}></div>
-                            </div>
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-500 font-medium mb-1">Progreso Riego</p>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${crop.progress}%` }}></div>
                         </div>
+                      </div>
                     )}
                     {crop.alert && (
-                        <div className="col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
-                            <p className="text-sm text-red-800 font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg">pest_control</span> {crop.alert}
-                            </p>
-                        </div>
+                      <div className="col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                        <p className="text-sm text-red-800 font-bold flex items-center gap-2">
+                          <span className="material-symbols-outlined text-lg">pest_control</span> {crop.alert}
+                        </p>
+                      </div>
                     )}
                     {!crop.progress && !crop.alert && (
-                         <div>
-                            <p className="text-sm text-gray-500 font-medium">Fecha</p>
-                            <p className="text-lg font-bold text-gray-900">{crop.date}</p>
-                        </div>
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">Fecha</p>
+                        <p className="text-lg font-bold text-gray-900">{crop.date}</p>
+                      </div>
                     )}
                   </div>
                   <div className="mt-auto pt-4 flex gap-3">
-                    <button 
-                        onClick={() => handleEdit(crop)}
-                        className="flex-1 bg-white border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary py-3 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
+                    <button
+                      onClick={() => handleEdit(crop)}
+                      className="flex-1 bg-white border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary py-3 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <span className="material-symbols-outlined">edit</span> Editar
                     </button>
-                    <button 
-                        onClick={() => handleViewDetails(crop)}
-                        className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 py-3 rounded-xl font-bold text-lg transition-colors"
+                    <button
+                      onClick={() => handleViewDetails(crop)}
+                      className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 py-3 rounded-xl font-bold text-lg transition-colors"
                     >
                       Ver Detalles
                     </button>
@@ -249,9 +264,9 @@ const Dashboard: React.FC = () => {
             ))}
 
             {/* Add New Placeholder Card (Optional redundant click) */}
-            <article 
-                onClick={handleAddNew}
-                className="border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-gray-50 transition-colors cursor-pointer group min-h-[400px]"
+            <article
+              onClick={handleAddNew}
+              className="border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-gray-50 transition-colors cursor-pointer group min-h-[400px]"
             >
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors mb-4">
                 <span className="material-symbols-outlined text-4xl text-[#388E3C]">add</span>
@@ -264,152 +279,151 @@ const Dashboard: React.FC = () => {
 
         {/* --- MODAL: ADD / EDIT CROP --- */}
         {isFormOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <h2 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Cultivo' : 'Nueva Cosecha'}</h2>
-                        <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600">
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-                    <form onSubmit={handleSave} className="p-6 space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del Cultivo</label>
-                            <input 
-                                name="name" 
-                                value={currentCrop.name} 
-                                onChange={handleInputChange} 
-                                className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary" 
-                                type="text" 
-                                placeholder="Ej. Aguacate Hass" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Ubicación / Huerta</label>
-                            <input 
-                                name="location" 
-                                value={currentCrop.location} 
-                                onChange={handleInputChange} 
-                                className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary" 
-                                type="text" 
-                                placeholder="Ej. Parcela Norte" 
-                                required 
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Hectáreas</label>
-                                <input 
-                                    name="hectares" 
-                                    value={currentCrop.hectares} 
-                                    onChange={handleInputChange} 
-                                    className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary" 
-                                    type="number" 
-                                    step="0.1" 
-                                    required 
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Toneladas Est.</label>
-                                <input 
-                                    name="tonnage" 
-                                    value={currentCrop.tonnage} 
-                                    onChange={handleInputChange} 
-                                    className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary" 
-                                    type="number" 
-                                    required 
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Estado</label>
-                            <select 
-                                name="status" 
-                                value={currentCrop.status} 
-                                onChange={handleInputChange}
-                                className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
-                            >
-                                <option value="Growing">Creciendo / En desarrollo</option>
-                                <option value="Ready">Listo para Cosecha</option>
-                                <option value="Attention">Requiere Atención</option>
-                            </select>
-                        </div>
-                        <div className="pt-4 flex gap-3">
-                            <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                            <button type="submit" className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/30 transition-colors">Guardar</button>
-                        </div>
-                        {isEditing && (
-                            <button type="button" onClick={() => handleDelete(currentCrop.id!)} className="w-full text-center text-red-500 text-sm font-bold mt-2 hover:underline">
-                                Eliminar Cultivo
-                            </button>
-                        )}
-                    </form>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h2 className="text-2xl font-bold text-gray-900">{isEditing ? 'Editar Cultivo' : 'Nueva Cosecha'}</h2>
+                <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <form onSubmit={handleSave} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del Cultivo</label>
+                  <input
+                    name="name"
+                    value={currentCrop.name}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
+                    type="text"
+                    placeholder="Ej. Aguacate Hass"
+                    required
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Ubicación / Huerta</label>
+                  <input
+                    name="location"
+                    value={currentCrop.location}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
+                    type="text"
+                    placeholder="Ej. Parcela Norte"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Hectáreas</label>
+                    <input
+                      name="hectares"
+                      value={currentCrop.hectares}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
+                      type="number"
+                      step="0.1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Toneladas Est.</label>
+                    <input
+                      name="tonnage"
+                      value={currentCrop.tonnage}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
+                      type="number"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Estado</label>
+                  <select
+                    name="status"
+                    value={currentCrop.status}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border-gray-300 focus:border-primary focus:ring-primary"
+                  >
+                    <option value="Growing">Creciendo / En desarrollo</option>
+                    <option value="Ready">Listo para Cosecha</option>
+                    <option value="Attention">Requiere Atención</option>
+                  </select>
+                </div>
+                <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+                  <button type="submit" className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/30 transition-colors">Guardar</button>
+                </div>
+                {isEditing && (
+                  <button type="button" onClick={() => handleDelete(currentCrop.id!)} className="w-full text-center text-red-500 text-sm font-bold mt-2 hover:underline">
+                    Eliminar Cultivo
+                  </button>
+                )}
+              </form>
             </div>
+          </div>
         )}
 
         {/* --- MODAL: VIEW DETAILS --- */}
         {isDetailOpen && viewingCrop && (
-             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
-                    <div className="relative h-64 bg-gray-200">
-                        <img src={viewingCrop.image} alt={viewingCrop.name} className="w-full h-full object-cover" />
-                        <button onClick={() => setIsDetailOpen(false)} className="absolute top-4 right-4 bg-black/30 hover:bg-black/50 text-white rounded-full p-2 backdrop-blur transition-colors">
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
-                        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6">
-                            <h2 className="text-3xl font-black text-white">{viewingCrop.name}</h2>
-                            <p className="text-white/90 font-medium text-lg">{viewingCrop.location}</p>
-                        </div>
-                    </div>
-                    <div className="p-8 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-6 mb-8">
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Estado Actual</span>
-                                <span className={`text-xl font-bold ${
-                                    viewingCrop.status === 'Ready' ? 'text-green-600' : 
-                                    viewingCrop.status === 'Attention' ? 'text-red-500' : 'text-yellow-600'
-                                }`}>
-                                    {viewingCrop.status === 'Ready' ? 'Listo para Venta' : 
-                                     viewingCrop.status === 'Attention' ? 'Problema Detectado' : 'En Crecimiento'}
-                                </span>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Fecha de Registro</span>
-                                <span className="text-xl font-bold text-gray-800">{viewingCrop.date}</span>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Superficie Total</span>
-                                <span className="text-xl font-bold text-gray-800">{viewingCrop.hectares} Hectáreas</span>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Producción Estimada</span>
-                                <span className="text-xl font-bold text-gray-800">{viewingCrop.tonnage} Toneladas</span>
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex items-start gap-4">
-                            <span className="material-symbols-outlined text-blue-600 text-3xl">analytics</span>
-                            <div>
-                                <h3 className="font-bold text-blue-900 text-lg">Proyección de Mercado</h3>
-                                <p className="text-blue-800/80 text-sm mt-1 leading-relaxed">
-                                    Basado en tus {viewingCrop.tonnage} toneladas, el precio actual de mercado sugiere una oportunidad de venta alta en las próximas 2 semanas. Te recomendamos mantener el estado actualizado.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 flex gap-4">
-                            <button onClick={() => { setIsDetailOpen(false); handleEdit(viewingCrop); }} className="flex-1 bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-hover shadow-lg transition-colors flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined">edit</span> Editar Información
-                            </button>
-                            <button className="flex-1 bg-white border-2 border-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined">share</span> Compartir Ficha
-                            </button>
-                        </div>
-                    </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
+              <div className="relative h-64 bg-gray-200">
+                <img src={viewingCrop.image} alt={viewingCrop.name} className="w-full h-full object-cover" />
+                <button onClick={() => setIsDetailOpen(false)} className="absolute top-4 right-4 bg-black/30 hover:bg-black/50 text-white rounded-full p-2 backdrop-blur transition-colors">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h2 className="text-3xl font-black text-white">{viewingCrop.name}</h2>
+                  <p className="text-white/90 font-medium text-lg">{viewingCrop.location}</p>
                 </div>
-             </div>
+              </div>
+              <div className="p-8 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Estado Actual</span>
+                    <span className={`text-xl font-bold ${viewingCrop.status === 'Ready' ? 'text-green-600' :
+                      viewingCrop.status === 'Attention' ? 'text-red-500' : 'text-yellow-600'
+                      }`}>
+                      {viewingCrop.status === 'Ready' ? 'Listo para Venta' :
+                        viewingCrop.status === 'Attention' ? 'Problema Detectado' : 'En Crecimiento'}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Fecha de Registro</span>
+                    <span className="text-xl font-bold text-gray-800">{viewingCrop.date}</span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Superficie Total</span>
+                    <span className="text-xl font-bold text-gray-800">{viewingCrop.hectares} Hectáreas</span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Producción Estimada</span>
+                    <span className="text-xl font-bold text-gray-800">{viewingCrop.tonnage} Toneladas</span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex items-start gap-4">
+                  <span className="material-symbols-outlined text-blue-600 text-3xl">analytics</span>
+                  <div>
+                    <h3 className="font-bold text-blue-900 text-lg">Proyección de Mercado</h3>
+                    <p className="text-blue-800/80 text-sm mt-1 leading-relaxed">
+                      Basado en tus {viewingCrop.tonnage} toneladas, el precio actual de mercado sugiere una oportunidad de venta alta en las próximas 2 semanas. Te recomendamos mantener el estado actualizado.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex gap-4">
+                  <button onClick={() => { setIsDetailOpen(false); handleEdit(viewingCrop); }} className="flex-1 bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-hover shadow-lg transition-colors flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">edit</span> Editar Información
+                  </button>
+                  <button className="flex-1 bg-white border-2 border-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined">share</span> Compartir Ficha
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
       </main>
