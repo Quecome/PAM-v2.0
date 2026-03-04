@@ -3,7 +3,7 @@ import Navbar from '../../components/Navbar';
 import { Link } from 'react-router-dom';
 import { producersData, normalizeText } from '../../data/producers';
 
-type SortOption = 'relevancia' | 'rating' | 'disponibilidad' | 'nombre';
+type SortOption = 'relevancia' | 'rating' | 'estado' | 'nombre';
 
 const Producers: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,7 +47,7 @@ const Producers: React.FC = () => {
             case 'rating':
                 result = [...result].sort((a, b) => b.rating - a.rating);
                 break;
-            case 'disponibilidad':
+            case 'estado':
                 const availOrder: Record<string, number> = { immediate: 0, year_round: 1, upcoming: 2, none: 3 };
                 result = [...result].sort((a, b) => (availOrder[a.availabilityValue] || 9) - (availOrder[b.availabilityValue] || 9));
                 break;
@@ -136,11 +136,11 @@ const Producers: React.FC = () => {
                                     </div>
 
                                     <div className="relative shrink-0">
-                                        <span className="absolute left-3 top-2.5 material-symbols-outlined text-gray-500 text-[20px] pointer-events-none">calendar_month</span>
+                                        <span className="absolute left-3 top-2.5 material-symbols-outlined text-gray-500 text-[20px] pointer-events-none">checklist</span>
                                         <select value={selectedAvail} onChange={(e) => setSelectedAvail(e.target.value)} className="pl-10 pr-8 py-2.5 rounded-xl border-gray-300 bg-white text-sm font-bold text-gray-700 focus:border-primary focus:ring-primary shadow-sm cursor-pointer appearance-none min-w-[160px] sm:min-w-[180px]">
-                                            <option value="">Disponibilidad</option>
-                                            <option value="immediate">Inmediata</option>
-                                            <option value="upcoming">Próxima</option>
+                                            <option value="">Estado</option>
+                                            <option value="immediate">Disponible</option>
+                                            <option value="upcoming">Próximo</option>
                                             <option value="year_round">Todo el Año</option>
                                         </select>
                                         <span className="absolute right-2 top-3 material-symbols-outlined text-gray-400 text-[18px] pointer-events-none">expand_more</span>
@@ -164,7 +164,7 @@ const Producers: React.FC = () => {
                                 <span className="material-symbols-outlined text-[14px]">nutrition</span> Limón
                             </button>
                             <button onClick={() => setSelectedAvail('immediate')} className="whitespace-nowrap rounded-lg bg-white border border-[#e3e3de] px-3 py-1.5 text-xs font-bold text-[#5d5d55] hover:border-primary hover:text-primary transition-colors flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">local_shipping</span> Disponible
+                                <span className="material-symbols-outlined text-[14px]">checklist</span> Disponible
                             </button>
                         </div>
                     </div>
@@ -180,7 +180,7 @@ const Producers: React.FC = () => {
                         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="text-sm font-bold border-none bg-transparent focus:ring-0 cursor-pointer text-[#161613] pr-8">
                             <option value="relevancia">Relevancia</option>
                             <option value="rating">Calificación</option>
-                            <option value="disponibilidad">Disponibilidad</option>
+                            <option value="estado">Estado</option>
                             <option value="nombre">Nombre (A-Z)</option>
                         </select>
                     </div>
@@ -216,7 +216,7 @@ const Producers: React.FC = () => {
                                             <span className="font-bold text-[#161613] text-sm sm:text-base">{producer.product}</span>
                                         </div>
                                         <div className="flex flex-col text-right">
-                                            <span className="text-xs font-bold text-gray-400 uppercase">Disponibilidad</span>
+                                            <span className="text-xs font-bold text-gray-400 uppercase">Estado</span>
                                             <span className={`font-bold text-sm sm:text-base ${producer.availabilityColor}`}>{producer.availabilityText}</span>
                                         </div>
                                     </div>

@@ -16,12 +16,12 @@ const Sidebar: React.FC = () => {
 
   const initials = userName
     ? userName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'RM';
+    : 'US';
 
   const navItems = [
     { to: '/', icon: 'home', label: 'Volver al Sitio', isNavLink: true },
     { to: '/dashboard', icon: 'grass', label: 'Mis Cultivos', isNavLink: false },
-    { to: '/orders', icon: 'connect_without_contact', label: 'Interesados', isNavLink: false },
+    { to: '/producer/1', icon: 'verified_user', label: 'Mi Perfil', isNavLink: false },
   ];
 
   return (
@@ -72,21 +72,6 @@ const Sidebar: React.FC = () => {
           ))}
 
           <div className="my-3 border-t border-gray-100"></div>
-
-          <Link
-            to="/producer/1"
-            onClick={() => setIsMobileOpen(false)}
-            className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors"
-          >
-            <span className="material-symbols-outlined text-2xl">verified_user</span>
-            <span className="text-base font-bold">Mi Perfil Verificado</span>
-          </Link>
-
-          <button className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-gray-400 cursor-not-allowed opacity-60" disabled>
-            <span className="material-symbols-outlined text-2xl">history_edu</span>
-            <span className="text-base font-bold">Historial de Tratos</span>
-            <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">Pronto</span>
-          </button>
         </nav>
 
         {/* Footer */}
@@ -117,7 +102,7 @@ const Sidebar: React.FC = () => {
           </div>
           <div className="hidden lg:flex flex-col ml-3">
             <span className="text-2xl font-extrabold tracking-tight text-gray-900">PAM</span>
-            <span className="text-xs text-gray-500 font-medium">Panel de Productor</span>
+            <span className="text-xs text-gray-500 font-medium">Mis Producciones</span>
           </div>
         </div>
 
@@ -134,20 +119,7 @@ const Sidebar: React.FC = () => {
             </Link>
           ))}
 
-          <button className="flex items-center gap-4 px-2 lg:px-4 py-4 rounded-xl text-gray-400 cursor-not-allowed opacity-60 justify-center lg:justify-start" disabled title="Próximamente">
-            <span className="material-symbols-outlined text-3xl">history_edu</span>
-            <span className="hidden lg:block text-lg font-bold">Historial de Tratos</span>
-          </button>
-
           <div className="my-4 border-t border-gray-100"></div>
-
-          <Link
-            to="/producer/1"
-            className="flex items-center gap-4 px-2 lg:px-4 py-4 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors group justify-center lg:justify-start"
-          >
-            <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">verified_user</span>
-            <span className="hidden lg:block text-lg font-bold">Mi Perfil Verificado</span>
-          </Link>
         </nav>
 
         {/* Footer */}

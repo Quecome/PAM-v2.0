@@ -36,7 +36,7 @@
 
 ---
 
-## 🎯 Descripción Ejecutiva
+## 🎯 Descripción
 
 ### El Problema
 
@@ -48,7 +48,6 @@ PAM actúa como un **directorio verificado de confianza** que:
 
 - ✅ Conecta **productores certificados** directamente con **compradores reales** (supermercados, fraccionistas, exportadoras)
 - ✅ Proporciona un **Dashboard de gestión agrícola** con persistencia local de datos
-- ✅ Implementa un **sistema de verificación por 3 niveles** (Digital → Comunidad → Oficial PAM)
 - ✅ Integra un **chatbot de IA** (Google Gemini) especializado en agronomía michoacana con streaming
 - ✅ **No procesa pagos** — el modelo de negocio prioriza la conexión y confianza
 

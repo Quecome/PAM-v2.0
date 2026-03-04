@@ -151,9 +151,6 @@ const Dashboard: React.FC = () => {
               <span className="material-symbols-outlined text-3xl">notifications</span>
               <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
             </button>
-            <button className="w-12 h-12 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600">
-              <span className="material-symbols-outlined text-3xl">help</span>
-            </button>
           </div>
         </header>
 
@@ -416,9 +413,6 @@ const Dashboard: React.FC = () => {
                 <div className="mt-8 flex gap-4">
                   <button onClick={() => { setIsDetailOpen(false); handleEdit(viewingCrop); }} className="flex-1 bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-hover shadow-lg transition-colors flex items-center justify-center gap-2">
                     <span className="material-symbols-outlined">edit</span> Editar Información
-                  </button>
-                  <button className="flex-1 bg-white border-2 border-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined">share</span> Compartir Ficha
                   </button>
                 </div>
               </div>

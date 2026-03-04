@@ -43,11 +43,7 @@ const ProducerDetail: React.FC = () => {
                                 <h2 className="text-base sm:text-lg md:text-xl font-medium">{producer.location}</h2>
                             </div>
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={() => { navigator.clipboard?.writeText(window.location.href); alert('¡Link copiado al portapapeles!'); }} className="bg-white/10 hover:bg-white/20 backdrop-blur border border-white/30 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all flex items-center gap-2 text-sm sm:text-base">
-                                <span className="material-symbols-outlined">share</span> Compartir
-                            </button>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -153,17 +149,7 @@ const ProducerDetail: React.FC = () => {
                         <span><span className="font-bold">Nota:</span> PAM conecta personas. El pago y la entrega se acuerdan directamente.</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                        <div className="hidden md:flex flex-col">
-                            <span className="text-xs text-[#7f806b] font-medium uppercase tracking-wider">Trato Directo</span>
-                            <span className="text-sm font-medium text-[#161613]">Sin comisiones ni intermediarios.</span>
-                        </div>
-                        <div className="flex items-stretch gap-3 sm:gap-4 w-full sm:w-auto">
-                            <button className="flex-1 sm:flex-none min-w-0 sm:min-w-[280px] h-12 sm:h-14 bg-primary hover:bg-[#7a7e32] text-white rounded-xl font-bold text-sm sm:text-lg shadow-lg shadow-primary/30 flex items-center justify-center gap-2 sm:gap-3 transition-all active:scale-95">
-                                <span className="material-symbols-outlined text-[20px] sm:text-[24px]">chat</span> Negociar por WhatsApp
-                            </button>
-                        </div>
-                    </div>
+                    {/* Security Disclaimer only */}
                 </div>
             </div>
 
