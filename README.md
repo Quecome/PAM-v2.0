@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-En%20Desarrollo%20Activo-green?style=for-the-badge" alt="Estado: En Desarrollo Activo"/>
-  <img src="https://img.shields.io/badge/Versión-2.0.1-blue?style=for-the-badge" alt="Versión 2.0.1"/>
+  <img src="https://img.shields.io/badge/Versión-2.1.1-blue?style=for-the-badge" alt="Versión 2.0.1"/>
   <img src="https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React 19"/>
   <img src="https://img.shields.io/badge/Vite-6.2-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite 6"/>
   <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript 5.8"/>
