@@ -11,10 +11,11 @@
 <h1 align="center">🌿 PAM — Productores Agroalimentarios de Michoacán</h1>
 
 <p align="center">
-  <strong>Plataforma digital que conecta productores agrícolas verificados de Michoacán directamente con compradores reales.<br/>Sin intermediarios · Sin comisiones · Trato justo y directo</strong>
+  <strong>Plataforma digital que conecta productores agrícolas verificados de Michoacán directamente con compradores reales.<br/>Sin intermediarios · Sin comisiones · Trato justo y directo</strong><br/>
+  <em>Proyecto participante en el XXXII Concurso Estatal de Creatividad e Innovación Tecnológica (Categoría: Prototipo Informático)</em>
 </p>
 
-> **Aviso Legal:** Este proyecto fue desarrollado con fines de participación en convocatoria de competencia gubernamental. En caso de resultar ganador, la propiedad intelectual y todos los derechos se transferirán al Gobierno de México conforme a las bases de la convocatoria. Desarrollado con recursos propios y dedicación al campo michoacano.
+> **Aviso Legal:** Este proyecto fue desarrollado con fines de participación en el XXXII Concurso Estatal de Creatividad e Innovación Tecnológica del CECyTEM. En caso de resultar ganador, la propiedad intelectual y todos los derechos se transferirán al Gobierno de México conforme a las bases de la convocatoria, con el objetivo de que la plataforma sea operada como servicio público sin costo para los productores agrícolas de Michoacán.
 
 ---
 
@@ -40,16 +41,22 @@
 
 ### El Problema
 
-El sector agrícola de Michoacán —líder mundial en producción de aguacate, berries, limón y mango— enfrenta una crisis estructural de intermediación. Los productores pierden hasta el **60% del valor** de su cosecha frente a intermediarios ("coyotes"), carecen de herramientas digitales de gestión agrícola, y los compradores no disponen de mecanismos para verificar la legitimidad y certificaciones de sus proveedores.
+El sector agrícola de Michoacán —líder mundial en producción de aguacate, berries, limón y mango— enfrenta una crisis estructural de doble naturaleza:
+1. **Intermediación tradicional ("coyotaje")**: extrae hasta el **60% del valor** de la cosecha antes de que llegue al consumidor final. (Ej. En 2024, al productor limonero se le pagaba $8-$11 MXN/kg mientras en estados adyacentes como Colima alcanzaba los $18 MXN/kg — una brecha del 64%).
+2. **Presión del crimen organizado**: los canales físicos de comercialización se ven amenazados y el productor se ve forzado a negociar en entornos físicos inseguros.
 
-### La Solución
+A pesar de las dificultades territoriales, el **78% de los productores rurales de Michoacán poseen un teléfono celular**, lo que hace viable una solución digital.
 
-PAM actúa como un **directorio verificado de confianza** que:
+### Objetivos y La Solución
 
-- ✅ Conecta **productores certificados** directamente con **compradores reales** (supermercados, fraccionistas, exportadoras)
-- ✅ Proporciona un **Dashboard de gestión agrícola** con persistencia local de datos
-- ✅ Integra un **chatbot de IA** (Google Gemini) especializado en agronomía michoacana con streaming
-- ✅ **No procesa pagos** — el modelo de negocio prioriza la conexión y confianza
+El objetivo principal es digitalizar el canal de comercialización agrícola a través de una plataforma tecnológica verificada. PAM actúa como un **directorio verificado de confianza** y herramienta de desintermediación que:
+
+- ✅ **Conecta productores certificados** directamente con **compradores reales** sin exposición física.
+- ✅ **Reduce la brecha de precio** captado por el productor con la meta de alcanzar un 50-60% del precio final de mercado.
+- ✅ **Proporciona un Dashboard de gestión agrícola** (CRUD completo de cultivos) con persistencia local de datos.
+- ✅ **Integra un chatbot de IA** (Google Gemini) para proveer asesoría agronómica instantánea a productores rurales sin costo (especializado en Michoacán).
+- ✅ **Incentiva la conexión de 5 productores piloto** en su primera etapa de prototipo.
+- ✅ **No procesa pagos** — actúa como mecanismo de desintermediación digital priorizando la conexión y confianza.
 
 ### Propuesta de Valor
 
@@ -337,6 +344,24 @@ GEMINI_API_KEY=AIzaSy...tu_key_aqui
 
 ---
 
+## 💰 Viabilidad y Costos
+
+El proyecto demuestra su factibilidad a través de su evaluación en múltiples ejes:
+
+### Viabilidad Técnica y Operativa
+El sistema actual es un prototipo escalable con tecnología moderna (React, Vite, TailwindCSS) totalmente funcional como MVP (Mínimo Producto Viable), diseñado con una **Screaming Architecture**. Se probó con persistencia local preparándolo para la integración progresiva a bases de datos relacionales sin interrumpir al usuario.
+
+### Viabilidad Financiera
+El desarrollo actual es un prototipo cuyo costo operativo por escalamiento a un ambiente productivo estable se mantendría en **~$1,500 MXN/mes** usando VPS gestionados y la API de Gemini (con costos base de $800 MXN cubiertos iniciales con herramientas gratuitas / académicas).  
+Las alternativas para mantenimiento incluyen subsidios de gobiernos ante la transferencia tecnológica o suscripciones opcionales Freemium.
+
+### Viabilidad Social
+- **Corto Plazo:** Reducción del riesgo personal del agricultor y asesoría agronómica de la IA sin necesidad de extensionismo presencial.
+- **Mediano Plazo:** Incremento del precio captado por el productor con redes comunitarias verificadas.
+- **Largo Plazo:** Reducción estructural del coyotaje y aportación a la soberanía digital del estado.
+
+---
+
 ## 🗓 Hoja de Ruta
 
 ### Próximos pasos (producción)
@@ -355,9 +380,12 @@ GEMINI_API_KEY=AIzaSy...tu_key_aqui
 
 ## 🤝 Contribución y Licencia
 
-**Desarrollado por:** Productores Agroalimentarios de Michoacán (PAM)
+**Desarrollado por el Equipo PAM - Plantel CECYTE 16 HUANDACAREO**
+- **Autores:** Jerome Santiago Sarabia Cancino, Cristoper William Sixtos Lucio
+- **Asesor:** Jorge Roa Ramos
+- **Versión Documentada:** 2.1.0/2.0.1 (Concurso Marzo 2026)
 
-**Propósito:** Competencia de innovación tecnológica para el sector agroalimentario de Michoacán. En caso de resultar ganador, la propiedad intelectual se transferirá al Gobierno de México.
+**Propósito:** Proyecto elaborado como parte del expediente técnico para el XXXII Concurso Estatal de Creatividad e Innovación Tecnológica (Categoría: Prototipo Informático). En caso de resultar ganador, la propiedad intelectual y todos los derechos del proyecto se transferirán al Gobierno de México para ser operado como un servicio público.
 
 ### Convenciones de Código
 
