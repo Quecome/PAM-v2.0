@@ -1,19 +1,56 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import { Link } from 'react-router-dom';
-import { producersData, normalizeText } from '../../data/producers';
+import { supabase, isOfflineMode } from '../../lib/supabase';
+import { localProducers } from '../../lib/localData';
+import type { Producer } from '../../data/producers';
+
+const normalizeText = (text: string) =>
+    text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 type SortOption = 'relevancia' | 'rating' | 'estado' | 'nombre';
 
 const Producers: React.FC = () => {
+    const [producers, setProducers] = useState<Producer[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCrop, setSelectedCrop] = useState('');
     const [selectedCert, setSelectedCert] = useState('');
     const [selectedAvail, setSelectedAvail] = useState('');
     const [sortBy, setSortBy] = useState<SortOption>('relevancia');
 
+    // Cargar productores desde Supabase o fallback local
+    useEffect(() => {
+        const fetchProducers = async () => {
+            setIsLoading(true);
+            setLoadError(null);
+
+            if (isOfflineMode) {
+                setProducers(localProducers);
+                setIsLoading(false);
+                return;
+            }
+
+            const { data, error } = await supabase!
+                .from('producers')
+                .select('*')
+                .order('rating', { ascending: false });
+
+            if (error) {
+                console.error('Error cargando productores:', error);
+                setLoadError('Sin conexión a Supabase. Mostrando datos de muestra.');
+                setProducers(localProducers);
+            } else {
+                setProducers(data || localProducers);
+            }
+            setIsLoading(false);
+        };
+        fetchProducers();
+    }, []);
+
     const filteredProducers = useMemo(() => {
-        let result = producersData.filter(producer => {
+        let result = producers.filter(producer => {
             const normalizedSearch = normalizeText(searchTerm);
             const matchesSearch =
                 searchTerm === '' ||
@@ -34,9 +71,9 @@ const Producers: React.FC = () => {
 
             let matchesAvail = true;
             if (selectedAvail) {
-                if (selectedAvail === 'immediate') matchesAvail = producer.availabilityValue === 'immediate' || producer.availabilityValue === 'year_round';
-                else if (selectedAvail === 'upcoming') matchesAvail = producer.availabilityValue === 'upcoming';
-                else if (selectedAvail === 'year_round') matchesAvail = producer.availabilityValue === 'year_round';
+                if (selectedAvail === 'immediate') matchesAvail = producer.availability_value === 'immediate' || producer.availability_value === 'year_round';
+                else if (selectedAvail === 'upcoming') matchesAvail = producer.availability_value === 'upcoming';
+                else if (selectedAvail === 'year_round') matchesAvail = producer.availability_value === 'year_round';
             }
 
             return matchesSearch && matchesCrop && matchesCert && matchesAvail;
@@ -47,10 +84,11 @@ const Producers: React.FC = () => {
             case 'rating':
                 result = [...result].sort((a, b) => b.rating - a.rating);
                 break;
-            case 'estado':
+            case 'estado': {
                 const availOrder: Record<string, number> = { immediate: 0, year_round: 1, upcoming: 2, none: 3 };
-                result = [...result].sort((a, b) => (availOrder[a.availabilityValue] || 9) - (availOrder[b.availabilityValue] || 9));
+                result = [...result].sort((a, b) => (availOrder[a.availability_value] || 9) - (availOrder[b.availability_value] || 9));
                 break;
+            }
             case 'nombre':
                 result = [...result].sort((a, b) => a.name.localeCompare(b.name));
                 break;
@@ -59,7 +97,7 @@ const Producers: React.FC = () => {
         }
 
         return result;
-    }, [searchTerm, selectedCrop, selectedCert, selectedAvail, sortBy]);
+    }, [producers, searchTerm, selectedCrop, selectedCert, selectedAvail, sortBy]);
 
     const resetFilters = () => {
         setSearchTerm('');
@@ -173,73 +211,92 @@ const Producers: React.FC = () => {
 
             {/* Main Grid Content */}
             <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 sm:px-6 lg:px-8 w-full">
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3 sm:gap-4">
-                    <span className="text-sm font-bold text-gray-500">Mostrando {filteredProducers.length} productores verificados</span>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-500">Ordenar:</span>
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="text-sm font-bold border-none bg-transparent focus:ring-0 cursor-pointer text-[#161613] pr-8">
-                            <option value="relevancia">Relevancia</option>
-                            <option value="rating">Calificación</option>
-                            <option value="estado">Estado</option>
-                            <option value="nombre">Nombre (A-Z)</option>
-                        </select>
+                {loadError && (
+                    <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-800">
+                        <span className="material-symbols-outlined text-red-600">error</span>
+                        <span className="font-medium">{loadError}</span>
                     </div>
-                </div>
+                )}
 
-                {filteredProducers.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {filteredProducers.map((producer) => (
-                            <Link key={producer.id} to={`/producer/${producer.id}`} className="group flex flex-col h-full bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all duration-300">
-                                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
-                                    <img src={producer.image} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt={producer.product} onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23e5e7eb" width="400" height="300"/><text fill="%239ca3af" font-size="18" x="50%" y="50%" text-anchor="middle" dy=".3em">Imagen no disponible</text></svg>'; }} />
-                                    <div className="absolute top-3 left-3">
-                                        <span className="bg-white/90 backdrop-blur text-[#161613] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                                            {producer.years}
-                                        </span>
-                                    </div>
-                                    <div className="absolute bottom-3 right-3">
-                                        <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-[14px]">star</span> {producer.rating}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="p-4 sm:p-5 flex-1 flex flex-col">
-                                    <div className="mb-2">
-                                        <h3 className="text-base sm:text-lg font-black text-[#161613] group-hover:text-primary transition-colors">{producer.name}</h3>
-                                        <div className="flex items-center text-sm font-medium text-gray-500">
-                                            <span className="material-symbols-outlined text-[18px] mr-1">location_on</span> {producer.location}
-                                        </div>
-                                    </div>
-                                    <div className="my-3 py-3 border-t border-b border-gray-100 flex justify-between items-center">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-gray-400 uppercase">Producto</span>
-                                            <span className="font-bold text-[#161613] text-sm sm:text-base">{producer.product}</span>
-                                        </div>
-                                        <div className="flex flex-col text-right">
-                                            <span className="text-xs font-bold text-gray-400 uppercase">Estado</span>
-                                            <span className={`font-bold text-sm sm:text-base ${producer.availabilityColor}`}>{producer.availabilityText}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mt-auto">
-                                        {producer.certifications.map((cert, idx) => (
-                                            <span key={idx} className="px-2 py-1 bg-gray-100 rounded text-xs font-semibold text-gray-600 border border-gray-200">{cert}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4">
+                        <svg className="animate-spin h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <p className="text-gray-500 text-lg font-medium">Cargando directorio...</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="bg-gray-100 p-6 rounded-full mb-4">
-                            <span className="material-symbols-outlined text-4xl text-gray-400">search_off</span>
+                    <>
+                        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3 sm:gap-4">
+                            <span className="text-sm font-bold text-gray-500">Mostrando {filteredProducers.length} productores verificados</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-500">Ordenar:</span>
+                                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="text-sm font-bold border-none bg-transparent focus:ring-0 cursor-pointer text-[#161613] pr-8">
+                                    <option value="relevancia">Relevancia</option>
+                                    <option value="rating">Calificación</option>
+                                    <option value="estado">Estado</option>
+                                    <option value="nombre">Nombre (A-Z)</option>
+                                </select>
+                            </div>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">No se encontraron resultados</h3>
-                        <p className="text-gray-500 max-w-md">Intenta ajustar tus filtros de búsqueda o prueba con otros términos.</p>
-                        <button onClick={resetFilters} className="mt-6 text-primary font-bold hover:underline">
-                            Limpiar todos los filtros
-                        </button>
-                    </div>
+
+                        {filteredProducers.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                {filteredProducers.map((producer) => (
+                                    <Link key={producer.id} to={`/producer/${producer.id}`} className="group flex flex-col h-full bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all duration-300">
+                                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                                            <img src={producer.image} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt={producer.product} onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23e5e7eb" width="400" height="300"/><text fill="%239ca3af" font-size="18" x="50%" y="50%" text-anchor="middle" dy=".3em">Imagen no disponible</text></svg>'; }} />
+                                            <div className="absolute top-3 left-3">
+                                                <span className="bg-white/90 backdrop-blur text-[#161613] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                                                    {producer.years}
+                                                </span>
+                                            </div>
+                                            <div className="absolute bottom-3 right-3">
+                                                <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[14px]">star</span> {producer.rating}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                                            <div className="mb-2">
+                                                <h3 className="text-base sm:text-lg font-black text-[#161613] group-hover:text-primary transition-colors">{producer.name}</h3>
+                                                <div className="flex items-center text-sm font-medium text-gray-500">
+                                                    <span className="material-symbols-outlined text-[18px] mr-1">location_on</span> {producer.location}
+                                                </div>
+                                            </div>
+                                            <div className="my-3 py-3 border-t border-b border-gray-100 flex justify-between items-center">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-gray-400 uppercase">Producto</span>
+                                                    <span className="font-bold text-[#161613] text-sm sm:text-base">{producer.product}</span>
+                                                </div>
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-xs font-bold text-gray-400 uppercase">Estado</span>
+                                                    <span className={`font-bold text-sm sm:text-base ${producer.availability_color}`}>{producer.availability_text}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-auto">
+                                                {producer.certifications.map((cert, idx) => (
+                                                    <span key={idx} className="px-2 py-1 bg-gray-100 rounded text-xs font-semibold text-gray-600 border border-gray-200">{cert}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="bg-gray-100 p-6 rounded-full mb-4">
+                                    <span className="material-symbols-outlined text-4xl text-gray-400">search_off</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">No se encontraron resultados</h3>
+                                <p className="text-gray-500 max-w-md">Intenta ajustar tus filtros de búsqueda o prueba con otros términos.</p>
+                                <button onClick={resetFilters} className="mt-6 text-primary font-bold hover:underline">
+                                    Limpiar todos los filtros
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
 

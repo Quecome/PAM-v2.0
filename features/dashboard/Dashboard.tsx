@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../../components/Sidebar';
+import { supabase, isOfflineMode } from '../../lib/supabase';
+import { localCropsDB } from '../../lib/localData';
+import { useAuth } from '../../context/AuthContext';
 
 // Definición de tipo para los cultivos
 interface Crop {
@@ -11,71 +14,62 @@ interface Crop {
   date: string;
   status: 'Ready' | 'Growing' | 'Attention';
   image: string;
-  progress?: number; // Opcional, para riego
-  alert?: string; // Opcional, para plagas
+  progress?: number;
+  alert?: string;
+  user_id?: string;
 }
 
-// Datos iniciales simulados
-const initialCrops: Crop[] = [
-  {
-    id: 1,
-    name: "Aguacate Hass",
-    location: "Huerta San José",
-    hectares: 12.5,
-    tonnage: 80,
-    date: "Ayer",
-    status: 'Ready',
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCaxDG4zq5IH6QGafKs_aZYpyLr3pXrFHDZTEV1-6bKeH-1aK444XcB1jqE2OH503dYZ0wgNsu8DodrUHApcXC978xDVksDqrG1QAk4egBzVzsCAPCQB1npCL9R4CWnZUPXbhFUWZoEwVM_Bke01IEaQUIHIkzF4Wf-ndn_3S-TbCrON2tJfAwbTg0RqIwfPuxPivpClwucGiYrYYWpYqzq6K6vdB9l9XjI3Bwqao-f0FMN4Te3fft_aLWnwac-DDe-68sXcwgCCGcy"
-  },
-  {
-    id: 2,
-    name: "Limón Mexicano",
-    location: "Parcela El Rosario",
-    hectares: 5.0,
-    tonnage: 25,
-    date: "Nov 2023",
-    status: 'Growing',
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDQTwhobZT1GC17Gz3Nipa3PU0cRkmMgLUtF0kCzbmvlJy7avle6_O3PE1-reWWjRqk_UObaAIR5oFQNlMzEjm3RHrs81lEmTrebvV5wy5bkRCRsyO7MxNKudyjvVPzTI4HmaS4epbpQz2TjOUbx4a4Ogjy4oAhD6P7DwidUzp2Cx4e7JbKvVLnRDPqJyg3NBVtrU9xvDnP0VXqed_q8VXYVtV9toCUsk9qpTNIBm1_FfhzEoAOWW4sy75eztZATN9gsO46_m698Jp-",
-    progress: 70
-  },
-  {
-    id: 3,
-    name: "Zarzamora",
-    location: "Invernadero B",
-    hectares: 0.2, // 2000m2
-    tonnage: 5,
-    date: "Floración",
-    status: 'Attention',
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAJaCpbbyp1tK5uBf3oeqMhbU30367JH1tMK96qkncUQ0_1spvXcCz0ZNwp_3892Hta0nES7Xd-sf4T53V9NRrCjr8mkWETrfswNiSa7wLclodIh7sJUzEJVgEY5W9poZeBTiwqOYRcEUuzhmg8nPdI-iXU_RFWu4gwOUWp5pDuyBIXq52iOJQRyDjM-WFIfeuoqZgO-_39L_UxsSrXV3BfLtEytzhaBnOps6-rUTDVpU6L0DAkZXJcaZQTeRGGcoQfTzQR32o-UqMA",
-    alert: "Revisión de plaga"
-  }
-];
-
-const CROPS_STORAGE_KEY = 'pam_crops';
-
 const Dashboard: React.FC = () => {
-  // ✅ PERSISTENCIA: carga desde localStorage o usa datos iniciales
-  const [crops, setCrops] = useState<Crop[]>(() => {
-    try {
-      const stored = localStorage.getItem(CROPS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : initialCrops;
-    } catch {
-      return initialCrops;
-    }
-  });
+  const { session } = useAuth();
+  const [crops, setCrops] = useState<Crop[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // ✅ PERSISTENCIA: guarda en localStorage en cada cambio
-  useEffect(() => {
-    localStorage.setItem(CROPS_STORAGE_KEY, JSON.stringify(crops));
-  }, [crops]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // Estados para Modales
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [currentCrop, setCurrentCrop] = useState<Partial<Crop>>({}); // Para editar o agregar
-  const [viewingCrop, setViewingCrop] = useState<Crop | null>(null); // Para ver detalles
+  const [currentCrop, setCurrentCrop] = useState<Partial<Crop>>({});
+  const [viewingCrop, setViewingCrop] = useState<Crop | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // --- Carga desde Supabase o fallback local ---
+  const loadCrops = useCallback(async () => {
+    setIsLoading(true);
+    setDbError(null);
+
+    if (isOfflineMode) {
+      // Modo offline: leer de localStorage
+      setCrops(localCropsDB.getAll() as unknown as Crop[]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase!
+      .from('crops')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error cargando cultivos:', error);
+      setDbError('Sin conexión a Supabase. Mostrando datos locales.');
+      setCrops(localCropsDB.getAll() as unknown as Crop[]);
+    } else {
+      setCrops(data || []);
+    }
+    setIsLoading(false);
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    loadCrops();
+  }, [loadCrops]);
 
   // Filtrado
   const filteredCrops = crops.filter(crop =>
@@ -92,7 +86,7 @@ const Dashboard: React.FC = () => {
       hectares: 0,
       tonnage: 0,
       status: 'Growing',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCaxDG4zq5IH6QGafKs_aZYpyLr3pXrFHDZTEV1-6bKeH-1aK444XcB1jqE2OH503dYZ0wgNsu8DodrUHApcXC978xDVksDqrG1QAk4egBzVzsCAPCQB1npCL9R4CWnZUPXbhFUWZoEwVM_Bke01IEaQUIHIkzF4Wf-ndn_3S-TbCrON2tJfAwbTg0RqIwfPuxPivpClwucGiYrYYWpYqzq6K6vdB9l9XjI3Bwqao-f0FMN4Te3fft_aLWnwac-DDe-68sXcwgCCGcy' // Default image
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCaxDG4zq5IH6QGafKs_aZYpyLr3pXrFHDZTEV1-6bKeH-1aK444XcB1jqE2OH503dYZ0wgNsu8DodrUHApcXC978xDVksDqrG1QAk4egBzVzsCAPCQB1npCL9R4CWnZUPXbhFUWZoEwVM_Bke01IEaQUIHIkzF4Wf-ndn_3S-TbCrON2tJfAwbTg0RqIwfPuxPivpClwucGiYrYYWpYqzq6K6vdB9l9XjI3Bwqao-f0FMN4Te3fft_aLWnwac-DDe-68sXcwgCCGcy'
     });
     setIsEditing(false);
     setIsFormOpen(true);
@@ -109,29 +103,97 @@ const Dashboard: React.FC = () => {
     setIsDetailOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar este cultivo?")) {
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este cultivo?')) return;
+    if (isOfflineMode) {
+      localCropsDB.delete(id);
       setCrops(prev => prev.filter(c => c.id !== id));
-      setIsFormOpen(false); // Close if open
+      setIsFormOpen(false);
+      return;
+    }
+    const { error } = await supabase!.from('crops').delete().eq('id', id);
+    if (error) {
+      alert('Error al eliminar el cultivo. Intenta de nuevo.');
+    } else {
+      setCrops(prev => prev.filter(c => c.id !== id));
+      setIsFormOpen(false);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+
+    if (isOfflineMode) {
+      // Modo offline: localStorage
+      if (isEditing && currentCrop.id) {
+        localCropsDB.update(currentCrop.id, currentCrop as unknown as Parameters<typeof localCropsDB.update>[1]);
+        setCrops(prev => prev.map(c => c.id === currentCrop.id ? { ...c, ...currentCrop } as Crop : c));
+      } else {
+        const newCrop = localCropsDB.insert({
+          name: currentCrop.name || '',
+          location: currentCrop.location || '',
+          hectares: currentCrop.hectares || 0,
+          tonnage: currentCrop.tonnage || 0,
+          date: new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }),
+          status: currentCrop.status || 'Growing',
+          image: currentCrop.image || '',
+          progress: currentCrop.progress || 0,
+          alert: currentCrop.alert || '',
+        });
+        setCrops(prev => [newCrop as unknown as Crop, ...prev]);
+      }
+      setIsSaving(false);
+      setIsFormOpen(false);
+      return;
+    }
+
+    if (!session?.user?.id) { setIsSaving(false); return; }
 
     if (isEditing && currentCrop.id) {
-      // Update existing
-      setCrops(prev => prev.map(c => (c.id === currentCrop.id ? currentCrop as Crop : c)));
+      const { error } = await supabase!
+        .from('crops')
+        .update({
+          name: currentCrop.name,
+          location: currentCrop.location,
+          hectares: currentCrop.hectares,
+          tonnage: currentCrop.tonnage,
+          status: currentCrop.status,
+        })
+        .eq('id', currentCrop.id);
+
+      if (error) {
+        alert('Error al actualizar el cultivo.');
+      } else {
+        setCrops(prev => prev.map(c => (c.id === currentCrop.id ? { ...c, ...currentCrop } as Crop : c)));
+      }
     } else {
-      // Add new
-      const newId = crops.reduce((max, c) => Math.max(max, c.id), 0) + 1;
-      const newCrop = { ...currentCrop, id: newId, date: 'Hoy' } as Crop;
-      setCrops(prev => [newCrop, ...prev]);
+      const { data, error } = await supabase!
+        .from('crops')
+        .insert({
+          user_id: session.user.id,
+          name: currentCrop.name,
+          location: currentCrop.location,
+          hectares: currentCrop.hectares,
+          tonnage: currentCrop.tonnage,
+          status: currentCrop.status,
+          image: currentCrop.image,
+          date: new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        alert('Error al guardar el cultivo.');
+      } else if (data) {
+        setCrops(prev => [data as Crop, ...prev]);
+      }
     }
+
+    setIsSaving(false);
     setIsFormOpen(false);
   };
 
-  // Helper para inputs del formulario
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setCurrentCrop(prev => ({
@@ -155,6 +217,15 @@ const Dashboard: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-10">
+          {/* Error banner */}
+          {dbError && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-800">
+              <span className="material-symbols-outlined text-red-600">error</span>
+              <span className="font-medium">{dbError}</span>
+              <button onClick={loadCrops} className="ml-auto text-sm font-bold underline">Reintentar</button>
+            </div>
+          )}
+
           {/* Action Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div className="relative max-w-md w-full">
@@ -178,100 +249,110 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-10">
+          {/* Loading state */}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <svg className="animate-spin h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-gray-500 text-lg font-medium">Cargando tus cultivos...</p>
+            </div>
+          ) : (
+            /* Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-10">
 
-            {filteredCrops.map((crop) => (
-              <article key={crop.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col group">
-                <div className="h-48 bg-gray-100 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: `url('${crop.image}')` }}></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-2xl font-bold">{crop.name}</h3>
-                    <p className="text-white/90 font-medium">{crop.location}</p>
-                  </div>
-                  <div className="absolute top-4 right-4">
-                    {crop.status === 'Ready' && (
-                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold border border-green-200 shadow-sm">
-                        <span className="material-symbols-outlined text-lg">check_circle</span> Listo
-                      </span>
-                    )}
-                    {crop.status === 'Growing' && (
-                      <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold border border-yellow-200 shadow-sm">
-                        <span className="material-symbols-outlined text-lg">water_drop</span> Creciendo
-                      </span>
-                    )}
-                    {crop.status === 'Attention' && (
-                      <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-bold border border-orange-200 shadow-sm">
-                        <span className="material-symbols-outlined text-lg">warning</span> Atención
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="p-6 flex-1 flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4 text-gray-600">
-                    <div>
-                      <p className="text-sm text-gray-500 font-medium">Superficie</p>
-                      <p className="text-lg font-bold text-gray-900">{crop.hectares} Has</p>
+              {filteredCrops.map((crop) => (
+                <article key={crop.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col group">
+                  <div className="h-48 bg-gray-100 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: `url('${crop.image}')` }}></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className="absolute bottom-4 left-4 text-white">
+                      <h3 className="text-2xl font-bold">{crop.name}</h3>
+                      <p className="text-white/90 font-medium">{crop.location}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500 font-medium">Estimado</p>
-                      <p className="text-lg font-bold text-gray-900">{crop.tonnage} Ton</p>
+                    <div className="absolute top-4 right-4">
+                      {crop.status === 'Ready' && (
+                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold border border-green-200 shadow-sm">
+                          <span className="material-symbols-outlined text-lg">check_circle</span> Listo
+                        </span>
+                      )}
+                      {crop.status === 'Growing' && (
+                        <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold border border-yellow-200 shadow-sm">
+                          <span className="material-symbols-outlined text-lg">water_drop</span> Creciendo
+                        </span>
+                      )}
+                      {crop.status === 'Attention' && (
+                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-bold border border-orange-200 shadow-sm">
+                          <span className="material-symbols-outlined text-lg">warning</span> Atención
+                        </span>
+                      )}
                     </div>
-
-                    {/* Conditional Rendering for specific status details */}
-                    {crop.progress !== undefined && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-500 font-medium mb-1">Progreso Riego</p>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${crop.progress}%` }}></div>
-                        </div>
-                      </div>
-                    )}
-                    {crop.alert && (
-                      <div className="col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
-                        <p className="text-sm text-red-800 font-bold flex items-center gap-2">
-                          <span className="material-symbols-outlined text-lg">pest_control</span> {crop.alert}
-                        </p>
-                      </div>
-                    )}
-                    {!crop.progress && !crop.alert && (
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col gap-4">
+                    <div className="grid grid-cols-2 gap-4 text-gray-600">
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">Fecha</p>
-                        <p className="text-lg font-bold text-gray-900">{crop.date}</p>
+                        <p className="text-sm text-gray-500 font-medium">Superficie</p>
+                        <p className="text-lg font-bold text-gray-900">{crop.hectares} Has</p>
                       </div>
-                    )}
-                  </div>
-                  <div className="mt-auto pt-4 flex gap-3">
-                    <button
-                      onClick={() => handleEdit(crop)}
-                      className="flex-1 bg-white border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary py-3 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined">edit</span> Editar
-                    </button>
-                    <button
-                      onClick={() => handleViewDetails(crop)}
-                      className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 py-3 rounded-xl font-bold text-lg transition-colors"
-                    >
-                      Ver Detalles
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">Estimado</p>
+                        <p className="text-lg font-bold text-gray-900">{crop.tonnage} Ton</p>
+                      </div>
 
-            {/* Add New Placeholder Card (Optional redundant click) */}
-            <article
-              onClick={handleAddNew}
-              className="border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-gray-50 transition-colors cursor-pointer group min-h-[400px]"
-            >
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors mb-4">
-                <span className="material-symbols-outlined text-4xl text-[#388E3C]">add</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">Registrar Cultivo</h3>
-              <p className="text-gray-500 text-center mt-2 max-w-[200px]">Agrega un nuevo terreno o invernadero a tu panel.</p>
-            </article>
-          </div>
+                      {crop.progress !== undefined && (
+                        <div className="col-span-2">
+                          <p className="text-sm text-gray-500 font-medium mb-1">Progreso Riego</p>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${crop.progress}%` }}></div>
+                          </div>
+                        </div>
+                      )}
+                      {crop.alert && (
+                        <div className="col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                          <p className="text-sm text-red-800 font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg">pest_control</span> {crop.alert}
+                          </p>
+                        </div>
+                      )}
+                      {!crop.progress && !crop.alert && (
+                        <div>
+                          <p className="text-sm text-gray-500 font-medium">Fecha</p>
+                          <p className="text-lg font-bold text-gray-900">{crop.date}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-4 flex gap-3">
+                      <button
+                        onClick={() => handleEdit(crop)}
+                        className="flex-1 bg-white border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary py-3 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined">edit</span> Editar
+                      </button>
+                      <button
+                        onClick={() => handleViewDetails(crop)}
+                        className="flex-1 bg-primary/10 text-primary hover:bg-primary/20 py-3 rounded-xl font-bold text-lg transition-colors"
+                      >
+                        Ver Detalles
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+
+              {/* Add New Placeholder Card */}
+              <article
+                onClick={handleAddNew}
+                className="border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-gray-50 transition-colors cursor-pointer group min-h-[400px]"
+              >
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors mb-4">
+                  <span className="material-symbols-outlined text-4xl text-[#388E3C]">add</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Registrar Cultivo</h3>
+                <p className="text-gray-500 text-center mt-2 max-w-[200px]">Agrega un nuevo terreno o invernadero a tu panel.</p>
+              </article>
+            </div>
+          )}
         </div>
 
         {/* --- MODAL: ADD / EDIT CROP --- */}
@@ -349,7 +430,17 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="pt-4 flex gap-3">
                   <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                  <button type="submit" className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/30 transition-colors">Guardar</button>
+                  <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/30 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+                    {isSaving ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Guardando...
+                      </>
+                    ) : 'Guardar'}
+                  </button>
                 </div>
                 {isEditing && (
                   <button type="button" onClick={() => handleDelete(currentCrop.id!)} className="w-full text-center text-red-500 text-sm font-bold mt-2 hover:underline">

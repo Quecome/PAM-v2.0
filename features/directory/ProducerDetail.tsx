@@ -1,11 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
-import { producersData } from '../../data/producers';
+import { supabase, isOfflineMode } from '../../lib/supabase';
+import { localProducers } from '../../lib/localData';
+import type { Producer } from '../../data/producers';
 
 const ProducerDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const producer = producersData.find(p => p.id === Number(id));
+    const [producer, setProducer] = useState<Producer | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProducer = async () => {
+            setIsLoading(true);
+
+            if (isOfflineMode) {
+                const local = localProducers.find(p => p.id === Number(id)) || null;
+                setProducer(local);
+                setIsLoading(false);
+                return;
+            }
+
+            const { data, error } = await supabase!
+                .from('producers')
+                .select('*')
+                .eq('id', Number(id))
+                .single();
+
+            // Si Supabase falla, buscar en datos locales
+            setProducer(error ? (localProducers.find(p => p.id === Number(id)) || null) : data);
+            setIsLoading(false);
+        };
+        fetchProducer();
+    }, [id]);
+
+    if (isLoading) {
+        return (
+            <div className="bg-background-light min-h-screen flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                    <svg className="animate-spin h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <p className="text-gray-500 font-medium">Cargando perfil...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!producer) {
         return (
@@ -43,7 +85,6 @@ const ProducerDetail: React.FC = () => {
                                 <h2 className="text-base sm:text-lg md:text-xl font-medium">{producer.location}</h2>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -107,11 +148,11 @@ const ProducerDetail: React.FC = () => {
                         <div className="bg-white/60 rounded-xl p-4 sm:p-5 shadow-sm border border-white/40">
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-base sm:text-lg font-bold text-[#161613]">{producer.product}</span>
-                                <span className={`text-xs font-semibold px-2 py-1 rounded ${producer.availabilityValue === 'none' ? 'bg-gray-200 text-gray-600' : 'bg-primary/10 text-primary'}`}>{producer.statusText}</span>
+                                <span className={`text-xs font-semibold px-2 py-1 rounded ${producer.availability_value === 'none' ? 'bg-gray-200 text-gray-600' : 'bg-primary/10 text-primary'}`}>{producer.status_text}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-[#5d5d55] mt-3">
                                 <span className="material-symbols-outlined text-[18px]">trending_up</span>
-                                <span>Disponibilidad: <strong className={producer.availabilityColor}>{producer.availabilityText}</strong></span>
+                                <span>Disponibilidad: <strong className={producer.availability_color}>{producer.availability_text}</strong></span>
                             </div>
                             <div className="mt-3 flex items-center gap-2 text-sm text-[#5d5d55]">
                                 <span className="material-symbols-outlined text-[18px]">calendar_month</span>
@@ -148,8 +189,6 @@ const ProducerDetail: React.FC = () => {
                         <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-primary">security</span>
                         <span><span className="font-bold">Nota:</span> PAM conecta personas. El pago y la entrega se acuerdan directamente.</span>
                     </div>
-
-                    {/* Security Disclaimer only */}
                 </div>
             </div>
 

@@ -1,15 +1,42 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Navbar from '../../components/Navbar';
 import { Link } from 'react-router-dom';
-import { producersData, normalizeText } from '../../data/producers';
+import { supabase, isOfflineMode } from '../../lib/supabase';
+import { localProducers } from '../../lib/localData';
+import type { Producer } from '../../data/producers';
+
+const normalizeText = (text: string) =>
+  text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 const Landing: React.FC = () => {
+  const [producers, setProducers] = useState<Producer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('Todos');
   const resultsRef = useRef<HTMLElement>(null);
 
+  // Cargar productores desde Supabase o fallback local
+  useEffect(() => {
+    const fetchProducers = async () => {
+      if (isOfflineMode) {
+        setProducers(localProducers);
+        return;
+      }
+      const { data, error } = await supabase!
+        .from('producers')
+        .select('*')
+        .order('rating', { ascending: false })
+        .limit(6);
+      if (error || !data) {
+        setProducers(localProducers);
+      } else {
+        setProducers(data);
+      }
+    };
+    fetchProducers();
+  }, []);
+
   const filteredProducers = useMemo(() => {
-    return producersData.filter(producer => {
+    return producers.filter(producer => {
       const normalizedSearch = normalizeText(searchTerm);
       const matchesSearch =
         searchTerm === '' ||
@@ -32,7 +59,7 @@ const Landing: React.FC = () => {
 
       return matchesSearch && matchesFilter;
     });
-  }, [searchTerm, activeFilter]);
+  }, [producers, searchTerm, activeFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,14 +161,14 @@ const Landing: React.FC = () => {
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-200">
                   <img src={producer.image} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt={producer.product} onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect fill="%23e5e7eb" width="400" height="300"/><text fill="%239ca3af" font-size="18" x="50%" y="50%" text-anchor="middle" dy=".3em">Imagen no disponible</text></svg>'; }} />
                   <div className="absolute right-3 top-3">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-md shadow-sm border ${producer.statusColor}`}>
-                      <span className={`relative flex h-2 w-2`}>
-                        {producer.indicatorColor === 'bg-green-500' && (
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold backdrop-blur-md shadow-sm border ${producer.status_color}`}>
+                      <span className="relative flex h-2 w-2">
+                        {producer.indicator_color === 'bg-green-500' && (
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         )}
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${producer.indicatorColor}`}></span>
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${producer.indicator_color}`}></span>
                       </span>
-                      {producer.statusText}
+                      {producer.status_text}
                     </span>
                   </div>
                 </div>
